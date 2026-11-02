@@ -152,7 +152,7 @@ struct PairView: View {
         guard target.hasSSH else { return }
         probeError = nil
         do {
-            hostKey = try await SSHConnector.probeHostKey(host: target.host, port: target.sshPort)
+            hostKey = try await SSHConnector.probeHostKey(host: target.host, port: target.sshPort, fallback: existing?.lastAddress)
         } catch {
             probeError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

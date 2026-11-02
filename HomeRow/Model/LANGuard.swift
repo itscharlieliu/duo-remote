@@ -37,7 +37,30 @@ enum LANGuard {
 
     /// Resolves `host` and returns its first address, throwing unless every
     /// resolved address is on the LAN.
-    static func resolve(_ host: String, port: Int) async throws -> String {
+    ///
+    /// If `fallback` is given (a previously learned address, see
+    /// `Mac.lastAddress`), it is tried only when the primary name fails to
+    /// resolve — the case for a `.local` name over a VPN, where mDNS does
+    /// not cross the tunnel. The fallback must itself pass the same local
+    /// check, and the primary name is always tried first, so a stale
+    /// fallback never shadows a working name. If the fallback also fails,
+    /// the primary error is thrown, since that is the one the user can act on.
+    static func resolve(_ host: String, port: Int, fallback: String? = nil) async throws -> String {
+        do {
+            return try await resolveOnce(host, port: port)
+        } catch let primaryError {
+            guard let fallback, !fallback.isEmpty,
+                  fallback.lowercased() != host.lowercased() else { throw primaryError }
+            do {
+                return try await resolveOnce(fallback, port: port)
+            } catch {
+                throw primaryError
+            }
+        }
+    }
+
+    /// Single resolution attempt, with the LAN check described above.
+    private static func resolveOnce(_ host: String, port: Int) async throws -> String {
         try await Task.detached(priority: .userInitiated) {
             var hints = addrinfo()
             hints.ai_socktype = SOCK_STREAM

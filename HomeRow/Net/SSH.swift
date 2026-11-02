@@ -111,8 +111,8 @@ enum SSHCredential {
 
 enum SSHConnector {
     /// Fetches the host key the Mac presents, without authenticating.
-    static func probeHostKey(host: String, port: Int) async throws -> String {
-        let address = try await LANGuard.resolve(host, port: port)
+    static func probeHostKey(host: String, port: Int, fallback: String? = nil) async throws -> String {
+        let address = try await LANGuard.resolve(host, port: port, fallback: fallback)
         let recorder = HostKeyRecorder()
         do {
             let client = try await SSHClient.connect(to: SSHClientSettings(
@@ -134,7 +134,7 @@ enum SSHConnector {
         guard let pinned = mac.hostKey else {
             throw SSHFailure.other("\(mac.name) hasn’t been paired yet.")
         }
-        let address = try await LANGuard.resolve(mac.host, port: mac.sshPort)
+        let address = try await LANGuard.resolve(mac.host, port: mac.sshPort, fallback: mac.lastAddress)
         let recorder = HostKeyRecorder()
         let user = mac.user
         let auth: @Sendable () -> SSHAuthenticationMethod

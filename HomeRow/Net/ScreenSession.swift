@@ -44,7 +44,13 @@ final class ScreenSession: Identifiable {
         let mac = self.mac
         Task { [weak self] in
             do {
-                let address = try await LANGuard.resolve(mac.host, port: mac.screenPort)
+                let address = try await LANGuard.resolve(mac.host, port: mac.screenPort, fallback: mac.lastAddress)
+                // Learn the address a screen-only Mac was reached at, so a
+                // later connect can fall back to it when the saved name
+                // (e.g. a `.local` name over VPN) no longer resolves.
+                await MainActor.run {
+                    MacStore.shared.update(mac.id) { $0.lastAddress = address }
+                }
                 guard let self else { return }
                 let client = RFBClient(
                     host: address, port: mac.screenPort,

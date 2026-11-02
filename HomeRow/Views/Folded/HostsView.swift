@@ -52,6 +52,26 @@ struct HostsView: View {
                     Spacer()
                     Text(status(mac, asleep: asleep)).font(.system(size: 12)).foregroundStyle(Theme.secondary)
                 }
+                // Terminal/screen are never gated on Bonjour presence:
+                // "Asleep" only means Bonjour isn't advertising the Mac
+                // right now, which is also true over a VPN or on a
+                // different subnet even when the Mac is awake and its
+                // saved address (or last learned address) is reachable.
+                // Connecting still goes through LANGuard, so this only
+                // lets the user try — it never bypasses the LAN check.
+                HStack(spacing: 8) {
+                    Button { Task { await model.openTerminal(mac) } } label: {
+                        KeyLegend(top: ">_", bottom: "terminal")
+                    }
+                    .buttonStyle(KeyButtonStyle(radius: 8))
+                    .disabled(!mac.hasSSH)
+                    .opacity(mac.hasSSH ? 1 : 0.45)
+                    Button { Task { await model.openScreen(mac) } } label: {
+                        KeyLegend(top: "▭", bottom: "screen")
+                    }
+                    .buttonStyle(KeyButtonStyle(radius: 8))
+                }
+                .frame(height: 40)
                 if asleep {
                     HStack {
                         Text(mac.shortHost).font(.system(size: 12)).foregroundStyle(Theme.tertiary)
@@ -63,20 +83,6 @@ struct HostsView: View {
                         .frame(width: 82, height: 40)
                         .disabled(waking.contains(mac.id))
                     }
-                } else {
-                    HStack(spacing: 8) {
-                        Button { Task { await model.openTerminal(mac) } } label: {
-                            KeyLegend(top: ">_", bottom: "terminal")
-                        }
-                        .buttonStyle(KeyButtonStyle(radius: 8))
-                        .disabled(!mac.hasSSH)
-                        .opacity(mac.hasSSH ? 1 : 0.45)
-                        Button { Task { await model.openScreen(mac) } } label: {
-                            KeyLegend(top: "▭", bottom: "screen")
-                        }
-                        .buttonStyle(KeyButtonStyle(radius: 8))
-                    }
-                    .frame(height: 40)
                 }
             }
             .padding(.leading, 14)
