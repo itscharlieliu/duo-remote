@@ -39,3 +39,36 @@ final class CloseTabUITests: XCTestCase {
         XCTAssertTrue(tab.waitForNonExistence(timeout: 5))
     }
 }
+
+/// Landscape (flat) screen session: the keyboard key must dock the deck
+/// keyboard and never bring up the iOS keyboard.
+final class FlatKeyboardUITests: XCTestCase {
+    func testKeyboardKeyShowsDeckNotSystemKeyboard() throws {
+        guard let rfb = ProcessInfo.processInfo.environment["HOMEROW_UI_RFB"] else {
+            throw XCTSkip("HOMEROW_UI_RFB not set")
+        }
+        let app = XCUIApplication()
+        app.launchEnvironment["HOMEROW_DEMO_RFB"] = rfb
+        app.launchEnvironment["HOMEROW_DEMO_FOCUS"] = "screen"
+        app.launchEnvironment["HOMEROW_DEMO_POSTURE"] = "flat"
+        app.launch()
+
+        let keyboardKey = app.descendants(matching: .any)["keyboard"].firstMatch
+        XCTAssertTrue(keyboardKey.waitForExistence(timeout: 10))
+        keyboardKey.tap()
+
+        // The deck keyboard's letter keys appear…
+        XCTAssertTrue(app.descendants(matching: .any)["q"].firstMatch.waitForExistence(timeout: 3))
+        // …and the iOS keyboard never does, even briefly.
+        for _ in 0..<10 {
+            XCTAssertEqual(app.keyboards.count, 0, "iOS keyboard appeared")
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.lifetime = .keepAlways
+        add(shot)
+
+        keyboardKey.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["q"].firstMatch.waitForNonExistence(timeout: 3))
+    }
+}

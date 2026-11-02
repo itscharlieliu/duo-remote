@@ -42,10 +42,16 @@ struct HingeObserver: UIViewRepresentable {
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
+    /// The whole window, keyboard included. Posture must come from this, not
+    /// from the safe-area size: a software keyboard in landscape shrinks the
+    /// safe area below the inner-display threshold, which would flip the app
+    /// to the folded layout, dismiss the keyboard, flip back, and loop.
+    @State private var windowSize: CGSize = .zero
+
     var body: some View {
         @Bindable var model = model
-        GeometryReader { geometry in
-            let posture = DebugPosture.forced ?? Posture.from(size: geometry.size, hinge: model.hinge)
+        let posture = DebugPosture.forced ?? Posture.from(size: windowSize, hinge: model.hinge)
+        Group {
             ZStack {
                 Theme.background.ignoresSafeArea()
                 switch posture {
@@ -64,6 +70,14 @@ struct RootView: View {
             }
             .environment(\.posture, posture)
             .animation(.snappy(duration: 0.25), value: posture)
+        }
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { windowSize = geometry.size }
+                    .onChange(of: geometry.size) { _, size in windowSize = size }
+            }
+            .ignoresSafeArea()
         }
         .background(HingeObserver { status in model.hinge = status })
         .sheet(item: $model.prompter.current) { request in

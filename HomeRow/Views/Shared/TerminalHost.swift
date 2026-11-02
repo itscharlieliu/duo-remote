@@ -58,15 +58,23 @@ struct TerminalHost: UIViewRepresentable {
 struct KeyCapture: UIViewRepresentable {
     let session: ScreenSession
     @Binding var active: Bool
+    /// False: take hardware-keyboard input only, never show the iOS
+    /// keyboard (the flat layout uses the app's own deck keyboard).
+    var softwareKeyboard = true
 
     func makeUIView(context: Context) -> CaptureView {
         let view = CaptureView()
         view.session = session
+        view.softwareKeyboard = softwareKeyboard
         return view
     }
 
     func updateUIView(_ view: CaptureView, context: Context) {
         view.session = session
+        if view.softwareKeyboard != softwareKeyboard {
+            view.softwareKeyboard = softwareKeyboard
+            if view.isFirstResponder { view.reloadInputViews() }
+        }
         DispatchQueue.main.async {
             if active, !view.isFirstResponder { view.becomeFirstResponder() }
             if !active, view.isFirstResponder { view.resignFirstResponder() }
@@ -75,7 +83,11 @@ struct KeyCapture: UIViewRepresentable {
 
     final class CaptureView: UIView, UIKeyInput {
         weak var session: ScreenSession?
+        var softwareKeyboard = true
+        private let noKeyboard = UIView(frame: .zero)
         override var canBecomeFirstResponder: Bool { true }
+        override var inputView: UIView? { softwareKeyboard ? nil : noKeyboard }
+        override var inputAccessoryView: UIView? { nil }
         var hasText: Bool { true }
         var autocorrectionType: UITextAutocorrectionType = .no
         var autocapitalizationType: UITextAutocapitalizationType = .none

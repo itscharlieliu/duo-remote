@@ -81,7 +81,7 @@
 		56F69C6CC27652D7E030ACD2 /* LANGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANGuard.swift; sourceTree = "<group>"; };
 		60171701BD5EF95BA42253F6 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
 		640C57CC7E48C9CB483B632F /* RFBSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFBSocket.swift; sourceTree = "<group>"; };
-		6927EAB40F4D62F25346F002 /* HomeRow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeRow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6927EAB40F4D62F25346F002 /* HomeRow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeRow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C45A645C236560BA8782DD5 /* Mac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mac.swift; sourceTree = "<group>"; };
 		8B34D6D22F6E97C4CCA8B829 /* ScreenSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSession.swift; sourceTree = "<group>"; };
 		9A5BE51CA96FAF7D56E32FE1 /* RemoteScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreen.swift; sourceTree = "<group>"; };
@@ -643,6 +643,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = HomeRow/Resources/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -694,6 +695,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = HomeRow/Resources/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

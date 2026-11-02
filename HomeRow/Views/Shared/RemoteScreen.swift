@@ -53,6 +53,12 @@ final class RemoteScreenView: UIView, UIGestureRecognizerDelegate {
         layer.addSublayer(imageLayer)
         cursorLayer.contentsGravity = .resize
         cursorLayer.zPosition = 10
+        cursorLayer.magnificationFilter = .linear
+        // A soft shadow keeps the pointer visible on any wallpaper.
+        cursorLayer.shadowColor = UIColor.black.cgColor
+        cursorLayer.shadowOpacity = 0.55
+        cursorLayer.shadowRadius = 1.5
+        cursorLayer.shadowOffset = CGSize(width: 0, height: 1)
         layer.addSublayer(cursorLayer)
         ripple.fillColor = UIColor.white.withAlphaComponent(0.12).cgColor
         ripple.strokeColor = UIColor.white.withAlphaComponent(0.7).cgColor
@@ -72,8 +78,7 @@ final class RemoteScreenView: UIView, UIGestureRecognizerDelegate {
         CATransaction.setDisableActions(true)
         if let frame { imageLayer.contents = frame }
         remoteSize = size
-        cursorLayer.contents = cursor
-        cursorLayer.isHidden = cursor == nil
+        cursorLayer.contents = cursor ?? Self.fallbackArrow
         layoutImage()
         placeCursor(pointer: pointer, hotspot: hotspot, cursor: cursor)
         CATransaction.commit()
@@ -103,14 +108,48 @@ final class RemoteScreenView: UIView, UIGestureRecognizerDelegate {
 
     private func layoutImage() { imageLayer.frame = contentRect }
 
+    /// Smallest on-screen pointer height, in points. The Mac's pointer
+    /// image is in remote pixels; a Retina desktop is scaled down ~5× to
+    /// fit the phone, which would shrink it to a few points.
+    private static let minimumCursorHeight: CGFloat = 22
+
     private func placeCursor(pointer: CGPoint, hotspot: CGPoint, cursor: CGImage?) {
-        guard let cursor else { return }
-        let scale = pointsPerPixel
+        let image = cursor ?? Self.fallbackArrow
+        let hot = cursor == nil ? Self.fallbackHotspot : hotspot
+        let height = CGFloat(max(1, image.height))
+        let scale = max(pointsPerPixel, Self.minimumCursorHeight / height)
         let p = toView(pointer)
         cursorLayer.frame = CGRect(
-            x: p.x - hotspot.x * scale, y: p.y - hotspot.y * scale,
-            width: CGFloat(cursor.width) * scale, height: CGFloat(cursor.height) * scale)
+            x: p.x - hot.x * scale, y: p.y - hot.y * scale,
+            width: CGFloat(image.width) * scale, height: height * scale)
     }
+
+    /// The design's arrow (white, black outline), used until the Mac sends
+    /// its own pointer image. Drawn at 4× so it stays crisp when scaled.
+    private static let fallbackHotspot = CGPoint(x: 4, y: 4)
+    private static let fallbackArrow: CGImage = {
+        let size = CGSize(width: 56, height: 80)
+        let renderer = UIGraphicsImageRenderer(size: size, format: {
+            let f = UIGraphicsImageRendererFormat()
+            f.scale = 1
+            return f
+        }())
+        return renderer.image { ctx in
+            let path = UIBezierPath()
+            let pts: [(CGFloat, CGFloat)] = [(1, 1), (1, 16), (5, 12), (8, 19), (10.5, 18), (7.5, 11), (13, 11)]
+            for (i, (x, y)) in pts.enumerated() {
+                let point = CGPoint(x: x * 4, y: y * 4)
+                if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+            }
+            path.close()
+            UIColor.white.setFill()
+            path.fill()
+            UIColor.black.setStroke()
+            path.lineWidth = 4
+            path.lineJoinStyle = .round
+            path.stroke()
+        }.cgImage!
+    }()
 
     private func toRemote(_ p: CGPoint) -> CGPoint {
         let r = contentRect

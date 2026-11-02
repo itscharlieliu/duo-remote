@@ -43,11 +43,12 @@ final class LayoutSnapshotTests: XCTestCase {
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 669, height: 951)
         window.windowLevel = .alert + 1
-        func host(_ posture: Posture, size: CGSize) -> UIHostingController<AnyView> {
+        var current: UIView?
+        func host(_ posture: Posture, size: CGSize, flatKeyboard: Bool = false) -> UIHostingController<AnyView> {
             let root = AnyView(
                 ZStack {
                     Theme.background.ignoresSafeArea()
-                    OpenWorkspace(posture: posture)
+                    OpenWorkspace(posture: posture, flatKeyboard: flatKeyboard)
                 }
                 .environment(model)
                 .environment(MacStore.shared)
@@ -56,9 +57,14 @@ final class LayoutSnapshotTests: XCTestCase {
                 .environment(\.posture, posture)
                 .preferredColorScheme(.dark))
             let controller = UIHostingController(rootView: root)
-            window.frame = CGRect(origin: .zero, size: size)
-            window.rootViewController = controller
+            let container = UIViewController()
+            window.rootViewController = container
             window.makeKeyAndVisible()
+            container.addChild(controller)
+            controller.view.frame = CGRect(origin: .zero, size: size)
+            container.view.addSubview(controller.view)
+            controller.didMove(toParent: container)
+            current = controller.view
             return controller
         }
 
@@ -66,24 +72,28 @@ final class LayoutSnapshotTests: XCTestCase {
         try await waitFor { terminal.state == .connected && realScreen.state == .connected }
         terminal.send("clear; printf 'Last login: Sun Nov  1 08:12:04 on ttys002\\n'; echo 'you@studio ~ % brew upgrade'; echo '==> Upgrading 3 outdated packages:'; echo 'node 22.9.0 -> 22.11.0'\r")
         try await Task.sleep(for: .seconds(1.5))
-        try save(window, to: dir, name: "05-terminal-deck")
+        try save(current!, to: dir, name: "05-terminal-deck")
 
         model.focus = .screen
         try await Task.sleep(for: .seconds(1))
-        try save(window, to: dir, name: "06-screen-trackpad")
+        try save(current!, to: dir, name: "06-screen-trackpad")
 
         _ = host(.flat, size: CGSize(width: 951, height: 669))
         try await Task.sleep(for: .seconds(1))
-        try save(window, to: dir, name: "07-screen-flat")
+        try save(current!, to: dir, name: "07-screen-flat")
+
+        _ = host(.flat, size: CGSize(width: 951, height: 669), flatKeyboard: true)
+        try await Task.sleep(for: .seconds(1))
+        try save(current!, to: dir, name: "08-screen-flat-keyboard")
 
         terminal.close(); second.close(); realScreen.close()
     }
 
     @MainActor
-    private func save(_ window: UIWindow, to dir: String, name: String) throws {
-        window.layoutIfNeeded()
-        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-        let image = renderer.image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+    private func save(_ view: UIView, to dir: String, name: String) throws {
+        view.layoutIfNeeded()
+        let renderer = UIGraphicsImageRenderer(bounds: view.bounds)
+        let image = renderer.image { _ in view.drawHierarchy(in: view.bounds, afterScreenUpdates: true) }
         try image.pngData()!.write(to: URL(fileURLWithPath: dir).appendingPathComponent("\(name).png"))
     }
 

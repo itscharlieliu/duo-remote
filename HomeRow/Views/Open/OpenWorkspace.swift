@@ -13,7 +13,12 @@ struct OpenWorkspace: View {
     @State private var modifiers = ModifierState()
     @State private var lowerMode: LowerMode?
     @State private var flatTouch = true
-    @State private var flatKeyboard = false
+    @State private var flatKeyboard: Bool
+
+    init(posture: Posture, flatKeyboard: Bool = false) {
+        self.posture = posture
+        _flatKeyboard = State(initialValue: flatKeyboard)
+    }
 
     enum LowerMode { case trackpad, keyboard }
 
@@ -22,7 +27,7 @@ struct OpenWorkspace: View {
             let safeTop = geo.safeAreaInsets.top
             let full = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             if posture == .flat, model.focus == .screen, let screen = model.screen {
-                flatScreen(screen, safeTop: safeTop)
+                flatScreen(screen, safeTop: safeTop, height: full)
             } else {
                 VStack(spacing: 0) {
                     upper(safeTop: safeTop)
@@ -109,33 +114,47 @@ struct OpenWorkspace: View {
 
     // MARK: Flat (landscape) screen
 
-    private func flatScreen(_ screen: ScreenSession, safeTop: CGFloat) -> some View {
-        ZStack(alignment: .bottom) {
-            ScreenPane(session: screen, mode: flatTouch ? .direct : .relative, rounded: false)
-                .ignoresSafeArea()
-            // The crease, drawn faintly so you know where the fold is.
-            Rectangle()
-                .fill(LinearGradient(colors: [.black.opacity(0.18), .white.opacity(0.05), .black.opacity(0.12)],
-                                     startPoint: .leading, endPoint: .trailing))
-                .frame(width: 6)
-                .frame(maxHeight: .infinity)
-                .allowsHitTesting(false)
-                .ignoresSafeArea()
-            KeyCapture(session: screen, active: $flatKeyboard)
-                .frame(width: 1, height: 1)
-                .opacity(0.01)
-            KeyStrip(keys: DeckLayout.strip(flat: true), target: flatTarget(screen), modifiers: modifiers,
-                     keyboardOn: flatKeyboard, touchOn: flatTouch)
-                .frame(height: 38)
-                .padding(7)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(hex: 0x28292C, alpha: 0.88))
-                        .shadow(color: .black.opacity(0.45), radius: 15, y: 10)
-                )
-                .frame(maxWidth: 600)
-                .padding(.bottom, 18)
+    private func flatScreen(_ screen: ScreenSession, safeTop: CGFloat, height: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            ZStack(alignment: .bottom) {
+                ScreenPane(session: screen, mode: flatTouch ? .direct : .relative, rounded: false)
+                    .ignoresSafeArea(edges: flatKeyboard ? [.top, .horizontal] : .all)
+                // Always first responder so a hardware keyboard works, but
+                // never summons the iOS keyboard: typing on glass uses the
+                // deck keyboard below.
+                KeyCapture(session: screen, active: .constant(true), softwareKeyboard: false)
+                    .frame(width: 1, height: 1)
+                    .opacity(0.01)
+                if !flatKeyboard {
+                    flatStrip(screen)
+                        .padding(7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(hex: 0x28292C, alpha: 0.88))
+                                .shadow(color: .black.opacity(0.45), radius: 15, y: 10)
+                        )
+                        .frame(maxWidth: 600)
+                        .padding(.bottom, 18)
+                }
+            }
+            if flatKeyboard {
+                // The deck keyboard docked under the screen, MacBook-style.
+                VStack(spacing: 8) {
+                    flatStrip(screen)
+                        .frame(maxWidth: 600)
+                    Well(radius: 12, padding: 8, color: Theme.deckWell) {
+                        DeckKeyboard(target: flatTarget(screen), modifiers: modifiers, showFunctionRow: false)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+                .frame(height: height * 0.5)
+                .background(Theme.background.ignoresSafeArea())
+                .transition(.move(edge: .bottom))
+            }
         }
+        .animation(.snappy(duration: 0.22), value: flatKeyboard)
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 6) {
                 Text("\(screen.mac.shortHost) · \(Int(screen.fps)) fps · \(Int(screen.latencyMs)) ms")
@@ -148,6 +167,12 @@ struct OpenWorkspace: View {
             .padding(.top, max(8, safeTop))
             .padding(.trailing, 24)
         }
+    }
+
+    private func flatStrip(_ screen: ScreenSession) -> some View {
+        KeyStrip(keys: DeckLayout.strip(flat: true), target: flatTarget(screen), modifiers: modifiers,
+                 keyboardOn: flatKeyboard, touchOn: flatTouch)
+            .frame(height: 38)
     }
 
     // MARK: Targets
