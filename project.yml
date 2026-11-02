@@ -1,0 +1,108 @@
+name: HomeRow
+options:
+  bundleIdPrefix: com.charlieliu
+  deploymentTarget:
+    iOS: "27.1"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: 2592SJ8QAU
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "3"
+packages:
+  Citadel:
+    url: https://github.com/orlandos-nl/Citadel
+    from: 0.12.1
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    from: 1.99.2
+  BigInt:
+    url: https://github.com/attaswift/BigInt
+    from: 5.7.0
+  swift-nio-ssh:
+    url: https://github.com/Wellz26/swift-nio-ssh.git
+    minVersion: 0.3.4
+    maxVersion: 0.4.0
+  swift-nio:
+    url: https://github.com/apple/swift-nio.git
+    from: 2.81.0
+targets:
+  HomeRow:
+    type: application
+    platform: iOS
+    sources:
+      - path: HomeRow
+    info:
+      path: HomeRow/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Home Row
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIUserInterfaceStyle: Dark
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSBonjourServices:
+          - _ssh._tcp
+          - _rfb._tcp
+        NSLocalNetworkUsageDescription: Home Row finds the Macs on your home network and connects to them over SSH and Screen Sharing. Nothing leaves your local network.
+        NSFaceIDUsageDescription: Home Row uses Face ID to unlock the SSH key it signs in to your Macs with.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlieliu.homerow
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: true
+    dependencies:
+      - package: Citadel
+      - package: SwiftTerm
+      - package: BigInt
+      - package: swift-nio-ssh
+        product: NIOSSH
+      - package: swift-nio
+        product: NIOCore
+  HomeRowTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: HomeRowTests
+    dependencies:
+      - target: HomeRow
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlieliu.homerow.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/HomeRow.app/HomeRow
+        BUNDLE_LOADER: $(TEST_HOST)
+  HomeRowUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: HomeRowUITests
+    dependencies:
+      - target: HomeRow
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlieliu.homerow.uitests
+        TEST_TARGET_NAME: HomeRow
+schemes:
+  HomeRow:
+    build:
+      targets:
+        HomeRow: all
+        HomeRowTests: [test]
+        HomeRowUITests: [test]
+    test:
+      targets:
+        - HomeRowTests
+        - HomeRowUITests
