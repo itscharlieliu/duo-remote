@@ -14,8 +14,11 @@ Implements the Claude Design project **Home Row** (`Home Row.dc.html`).
 The posture comes from the iOS 27.1 hinge API (`UIHingeInteraction`) plus the
 window size. See `Posture` in `HomeRow/App/AppModel.swift`.
 
-LAN only. Every connection resolves the name first and refuses anything that
-isn't a private, link-local or `.local` address. No cloud relay, no account,
+LAN only (a VPN into your home network counts). Every connection resolves the
+name first and refuses anything that isn't a private, link-local, `.local` or
+`100.64.0.0/10` (Tailscale / WireGuard overlay) address. Away from home, a saved
+`.local` name falls back to the Mac's last known IP. If your VPN gives the Mac a
+different address (e.g. Tailscale), add it by that IP or MagicDNS name. No cloud relay, no account,
 no telemetry.
 
 ## Mac setup (once)

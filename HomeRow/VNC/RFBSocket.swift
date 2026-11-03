@@ -27,8 +27,10 @@ final class RFBSocket: @unchecked Sendable {
             tcp.noDelay = true
             tcp.enableKeepalive = true
         }
-        // LAN only: never route this over cellular.
-        params.prohibitedInterfaceTypes = [.cellular]
+        // No interface restriction here: LANGuard has already checked that
+        // `host` is a private/VPN address. Prohibiting cellular would also
+        // block a VPN tunnel that rides over cellular, since Network.framework
+        // judges the path by the tunnel's underlying interface.
         connection = NWConnection(
             host: NWEndpoint.Host(host),
             port: NWEndpoint.Port(rawValue: UInt16(port)) ?? 5900,

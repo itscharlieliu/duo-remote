@@ -22,15 +22,16 @@ final class ProtocolTests: XCTestCase {
     // MARK: LAN guard
 
     func testLocalAddresses() {
-        for ip in ["192.168.1.20", "10.0.0.5", "172.16.4.4", "172.31.255.1", "169.254.3.3", "fe80::1", "fd12:3456::1", "::ffff:192.168.0.2"] {
+        for ip in ["192.168.1.20", "10.0.0.5", "172.16.4.4", "172.31.255.1", "169.254.3.3", "fe80::1", "fd12:3456::1", "::ffff:192.168.0.2", "100.64.0.1", "100.101.102.103", "100.127.255.254", "fd7a:115c:a1e0::1"] {
             XCTAssertTrue(IPAddress(ip)!.isLocal, ip)
         }
-        for ip in ["8.8.8.8", "172.32.0.1", "1.1.1.1", "2606:4700::1111", "::ffff:8.8.8.8"] {
+        for ip in ["8.8.8.8", "172.32.0.1", "1.1.1.1", "2606:4700::1111", "::ffff:8.8.8.8", "100.63.255.255", "100.128.0.1"] {
             XCTAssertFalse(IPAddress(ip)!.isLocal, ip)
         }
         XCTAssertNil(LANGuard.validateName("studio.local"))
         XCTAssertNil(LANGuard.validateName("192.168.1.9"))
         XCTAssertNotNil(LANGuard.validateName("8.8.8.8"))
+        XCTAssertNil(LANGuard.validateName("100.101.102.103"))
     }
 
     // MARK: VNC password

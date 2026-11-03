@@ -15,9 +15,10 @@ network. It's built so that your data stays on your iPhone and your own Macs.
   any third party.
 - There are **no accounts, no analytics, no advertising, no tracking, and no
   crash reporting**.
-- Home Row only connects to devices on your **local network**. It refuses to
-  connect to any address that isn't private, link-local or `.local`, and it
-  uses no cloud relay.
+- Home Row only connects to devices on your **local network**, either directly
+  or through a VPN you run into it. It refuses to connect to any address that
+  isn't private, link-local, `.local` or in the `100.64.0.0/10` range used by
+  VPNs such as Tailscale, and it uses no cloud relay.
 
 ## What stays on your iPhone
 

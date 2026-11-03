@@ -181,7 +181,7 @@ struct HelpView: View {
                 ScreenTitle(text: "Set up a Mac")
                 step("1", "Remote Login", "System Settings → General → Sharing → Remote Login. Turn it on for the terminal. Note which users are allowed.")
                 step("2", "Screen Sharing", "In the same pane, turn on Screen Sharing. Home Row signs in with your macOS username and password.")
-                step("3", "Same Wi-Fi", "Home Row only talks to Macs on your local network. Nothing goes through the internet or a cloud relay.")
+                step("3", "Same network", "Home Row only talks to Macs on your local network: the same Wi-Fi, or over a VPN into it (e.g. WireGuard or Tailscale). Away from home, add the Mac by its VPN address or name. Nothing goes through a cloud relay.")
                 step("4", "Wake", "For waking a sleeping Mac, turn on System Settings → Energy → Wake for network access.")
                 Text("If the Mac doesn’t show up, check Settings → Privacy & Security → Local Network → Home Row on this phone.")
                     .font(.system(size: 12)).foregroundStyle(Theme.secondary)

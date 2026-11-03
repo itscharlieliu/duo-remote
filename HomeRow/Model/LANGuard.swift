@@ -1,7 +1,12 @@
 import Foundation
 import Darwin
 
-/// Keeps Home Row on the local network.
+/// Keeps Home Row on the local network (including a VPN into it).
+///
+/// "Local" means private, link-local, loopback, or the 100.64.0.0/10 shared
+/// range that Tailscale and similar WireGuard overlays hand out. Those
+/// overlays encrypt end to end, so reaching a Mac through one is no more
+/// exposed than reaching it on the home Wi-Fi.
 ///
 /// Two checks: `validateName` runs when a Mac is saved (cheap, on the string),
 /// and `resolve` runs before every connection and checks every address the
@@ -16,9 +21,9 @@ enum LANGuard {
         var errorDescription: String? {
             switch self {
             case .notLocal(let host):
-                "\(host) isn’t on your local network. Home Row only connects to Macs on the same Wi-Fi."
+                "\(host) isn’t on your local network. Home Row only connects to Macs on your home network, directly or over a VPN."
             case .unresolvable(let host):
-                "Couldn’t find \(host) on this network. Is the Mac awake and on the same Wi-Fi?"
+                "Couldn’t find \(host) on this network. Is the Mac awake, and are you on the same Wi-Fi or connected to your VPN?"
             }
         }
     }
@@ -124,6 +129,7 @@ struct IPAddress {
                 || (a == 172 && (16...31).contains(b))
                 || (a == 192 && b == 168)
                 || (a == 169 && b == 254)
+                || (a == 100 && (64...127).contains(b)) // 100.64/10: Tailscale & other overlay VPNs
                 || a == 127
         }
         // IPv4-mapped IPv6 (::ffff:a.b.c.d)
