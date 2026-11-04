@@ -115,28 +115,31 @@ struct OpenWorkspace: View {
     // MARK: Flat (landscape) screen
 
     private func flatScreen(_ screen: ScreenSession, safeTop: CGFloat, height: CGFloat) -> some View {
+        // Header, screen and strip each get their own band so nothing sits
+        // on top of the Mac's screen (its Dock, menu bar, login field…).
         VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                Text("\(screen.mac.shortHost) · \(Int(screen.fps)) fps · \(Int(screen.latencyMs)) ms")
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.tertiary)
+                Button { model.closeScreen() } label: { Text("disconnect") }
+                    .buttonStyle(KeyButtonStyle(radius: 6, corner: .center))
+                    .frame(width: 96, height: 28)
+            }
+            .padding(.top, max(6, safeTop))
+            .padding(.bottom, 6)
+            .padding(.horizontal, 24)
+            ZStack {
                 ScreenPane(session: screen, mode: flatTouch ? .direct : .relative, rounded: false)
-                    .ignoresSafeArea(edges: flatKeyboard ? [.top, .horizontal] : .all)
                 // Always first responder so a hardware keyboard works, but
                 // never summons the iOS keyboard: typing on glass uses the
                 // deck keyboard below.
                 KeyCapture(session: screen, active: .constant(true), softwareKeyboard: false)
                     .frame(width: 1, height: 1)
                     .opacity(0.01)
-                if !flatKeyboard {
-                    flatStrip(screen)
-                        .padding(7)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color(hex: 0x28292C, alpha: 0.88))
-                                .shadow(color: .black.opacity(0.45), radius: 15, y: 10)
-                        )
-                        .frame(maxWidth: 600)
-                        .padding(.bottom, 18)
-                }
             }
+            .frame(maxHeight: .infinity)
             if flatKeyboard {
                 // The deck keyboard docked under the screen, MacBook-style.
                 VStack(spacing: 8) {
@@ -150,23 +153,26 @@ struct OpenWorkspace: View {
                 .padding(.top, 8)
                 .padding(.bottom, 10)
                 .frame(height: height * 0.5)
-                .background(Theme.background.ignoresSafeArea())
+                .background(Theme.background)
                 .transition(.move(edge: .bottom))
+            } else {
+                flatStrip(screen)
+                    .padding(7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(hex: 0x28292C, alpha: 0.88))
+                    )
+                    .frame(maxWidth: 600)
+                    .padding(.top, 6)
+                    .padding(.bottom, 10)
             }
         }
+        .background(Theme.remoteBlack)
+        .ignoresSafeArea()
+        // Landscape reports no top inset, so the system status icons would
+        // sit on the header's disconnect button. The Mac shows its own clock.
+        .statusBarHidden(true)
         .animation(.snappy(duration: 0.22), value: flatKeyboard)
-        .overlay(alignment: .topTrailing) {
-            HStack(spacing: 6) {
-                Text("\(screen.mac.shortHost) · \(Int(screen.fps)) fps · \(Int(screen.latencyMs)) ms")
-                    .font(Theme.mono(11))
-                    .foregroundStyle(Theme.tertiary)
-                Button { model.closeScreen() } label: { Text("disconnect") }
-                    .buttonStyle(KeyButtonStyle(radius: 6, corner: .center))
-                    .frame(width: 96, height: 28)
-            }
-            .padding(.top, max(8, safeTop))
-            .padding(.trailing, 24)
-        }
     }
 
     private func flatStrip(_ screen: ScreenSession) -> some View {
