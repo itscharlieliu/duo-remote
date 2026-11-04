@@ -30,6 +30,9 @@ final class ScreenSession: Identifiable {
     private(set) var buttons: UInt8 = 0
 
     @ObservationIgnored private var client: RFBClient?
+    /// Picks an address and opens the socket, before `client` exists.
+    @ObservationIgnored private var connecting: Task<Void, Never>?
+    @ObservationIgnored private var connectedAddress: String?
     /// Translates deck keys into key events for this session.
     @ObservationIgnored private(set) lazy var keys = ScreenKeyTarget(session: self)
     @ObservationIgnored private var caffeinate: Task<Void, Never>?
@@ -42,26 +45,52 @@ final class ScreenSession: Identifiable {
     func start(password: String) {
         state = .connecting
         let mac = self.mac
-        Task { [weak self] in
+        connecting?.cancel()
+        connecting = Task { [weak self] in
             do {
-                let address = try await LANGuard.resolve(mac.host, port: mac.screenPort, fallback: mac.lastAddress)
-                // Learn the address a screen-only Mac was reached at, so a
-                // later connect can fall back to it when the saved name
-                // (e.g. a `.local` name over VPN) no longer resolves.
-                await MainActor.run {
-                    MacStore.shared.update(mac.id) { $0.lastAddress = address }
-                }
-                guard let self else { return }
+                let socket = try await Self.openSocket(to: mac)
+                guard let self, !Task.isCancelled else { socket.close(); return }
+                self.connectedAddress = socket.host
                 let client = RFBClient(
-                    host: address, port: mac.screenPort,
+                    socket: socket,
                     credentials: .init(username: mac.user, password: password),
                     quality: Preferences.shared.quality
                 ) { [weak self] event in self?.handle(event) }
                 self.client = client
                 client.start()
             } catch {
+                guard !Task.isCancelled else { return }
                 self?.state = .closed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
             }
+        }
+    }
+
+    /// Opens a TCP connection to Screen Sharing, trying the last address
+    /// the Mac was reached at before the saved name. Resolving a `.local` name
+    /// is slow when it fails (over a VPN, where mDNS can't cross the
+    /// tunnel), and the IP is usually still right. If the IP is stale, the
+    /// short timeout keeps the detour cheap, and the name is resolved and
+    /// tried as usual. Both paths pass the same `LANGuard` local check.
+    private nonisolated static func openSocket(to mac: Mac) async throws -> RFBSocket {
+        if let last = mac.lastAddress, !last.isEmpty,
+           let address = try? await LANGuard.resolve(last, port: mac.screenPort) {
+            let socket = RFBSocket(host: address, port: mac.screenPort)
+            do {
+                try await socket.open(timeout: 3)
+                return socket
+            } catch {
+                socket.close()
+            }
+        }
+        try Task.checkCancellation()
+        let address = try await LANGuard.resolve(mac.host, port: mac.screenPort)
+        let socket = RFBSocket(host: address, port: mac.screenPort)
+        do {
+            try await socket.open()
+            return socket
+        } catch {
+            socket.close()
+            throw error
         }
     }
 
@@ -71,7 +100,13 @@ final class ScreenSession: Identifiable {
             state = .connected
             screenSize = CGSize(width: w, height: h)
             pointer = CGPoint(x: w / 2, y: h / 2)
-            MacStore.shared.update(mac.id) { $0.lastConnected = .now }
+            // Learn the address only once sign-in has succeeded, so a stale
+            // or wrong IP never replaces a good one.
+            let address = connectedAddress
+            MacStore.shared.update(mac.id) {
+                $0.lastConnected = .now
+                if let address { $0.lastAddress = address }
+            }
             startCaffeinateIfWanted()
         case .frame(let image):
             frame = image
@@ -98,6 +133,8 @@ final class ScreenSession: Identifiable {
     }
 
     func close() {
+        connecting?.cancel()
+        connecting = nil
         client?.stop()
         client = nil
         stopCaffeinate()

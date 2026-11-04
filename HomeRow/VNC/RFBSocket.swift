@@ -20,8 +20,12 @@ final class RFBSocket: @unchecked Sendable {
     private var buffer = [UInt8]()
     private var offset = 0
     private(set) var bytesReceived = 0
+    let host: String
+    private let openLock = NSLock()
+    private var isOpen = false
 
     init(host: String, port: Int) {
+        self.host = host
         let params = NWParameters.tcp
         if let tcp = params.defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options {
             tcp.noDelay = true
@@ -37,13 +41,19 @@ final class RFBSocket: @unchecked Sendable {
             using: params)
     }
 
+    /// Connects, or returns at once if already connected (so a caller can
+    /// open the socket itself to pick an address, then hand it to `RFBClient`).
     func open(timeout: TimeInterval = 10) async throws {
+        if openLock.withLock({ isOpen }) { return }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let once = OnceFlag()
             connection.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    if once.claim() { continuation.resume() }
+                    if once.claim() {
+                        self.openLock.withLock { self.isOpen = true }
+                        continuation.resume()
+                    }
                 case .failed(let error):
                     if once.claim() { continuation.resume(throwing: Failure.failed(Self.describe(error))) }
                 case .waiting(let error):

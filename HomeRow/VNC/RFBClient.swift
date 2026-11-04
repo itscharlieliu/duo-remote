@@ -26,8 +26,6 @@ final class RFBClient: @unchecked Sendable {
         var password: String
     }
 
-    private let host: String
-    private let port: Int
     private let credentials: Credentials
     private let socket: RFBSocket
     private let onEvent: @MainActor (RFBEvent) -> Void
@@ -46,15 +44,20 @@ final class RFBClient: @unchecked Sendable {
     private var latencies: [Double] = []
     private var slowUpdates = 0
 
-    init(host: String, port: Int, credentials: Credentials, quality: Preferences.Quality,
+    convenience init(host: String, port: Int, credentials: Credentials, quality: Preferences.Quality,
+                     onEvent: @escaping @MainActor (RFBEvent) -> Void) {
+        self.init(socket: RFBSocket(host: host, port: port), credentials: credentials,
+                  quality: quality, onEvent: onEvent)
+    }
+
+    /// `socket` may already be open; `run` opens it if not.
+    init(socket: RFBSocket, credentials: Credentials, quality: Preferences.Quality,
          onEvent: @escaping @MainActor (RFBEvent) -> Void) {
-        self.host = host
-        self.port = port
         self.credentials = credentials
         self.onEvent = onEvent
         self.adaptive = quality == .adaptive
         self._format = quality == .low ? .compact : .full
-        self.socket = RFBSocket(host: host, port: port)
+        self.socket = socket
     }
 
     func start() {

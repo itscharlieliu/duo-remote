@@ -21,7 +21,12 @@ enum RFBAuth {
         let prime = BigUInt(Data(try await socket.read(keyLength)))
         let serverPublic = BigUInt(Data(try await socket.read(keyLength)))
 
-        let privateKey = BigUInt(Data(randomBytes(keyLength))) % prime
+        // A 256-bit private exponent gives ~128-bit security, which is the
+        // standard choice for DH. Making it as long as the prime (macOS sends
+        // a 4096-bit one) adds no meaningful security but costs ~18x more
+        // work in the two `power` calls: seconds on a phone, tens of seconds
+        // in a Debug build.
+        let privateKey = BigUInt(Data(randomBytes(min(32, keyLength)))) % prime
         let clientPublic = generator.power(privateKey, modulus: prime)
         let shared = serverPublic.power(privateKey, modulus: prime)
 
